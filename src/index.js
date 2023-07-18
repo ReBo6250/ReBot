@@ -1,26 +1,42 @@
+require('dotenv').config();
 const { Client, Intents } = require('discord.js');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
-require('dotenv').config();
+const {Configuration, OpenAIApi} = require("openai")
+const configuration = new Configuration({ apiKey: process.env.apiKey })
 
+const openai = new OpenAIApi(configuration)
 const botPrefix = '-rebot ';
 
-const gameWordTriggers = ['game', 'raro', 'ra', 'g', 'laro', 'tara', 'what', 'wut', 'nani', 'set'];
-const questionWordTriggers = ['bat', 'ano', 'bakit', 'ket', 'anu', 'saan', 'pano', 'panu', 'anong', 'anung', 'paano', 'paanong', 'panung', 'panong', 'saan'];
-const insultWordTriggers = ['gae', 'gay', 'pink', 'yellow', 'red', 'black', 'violet', 'purple', 'pilay', 'mama', 'pangit', 'panget', `bot`];
+const specialWordTriggers = ['haha', 'hahaha', 'sino ka', 'dn', 'marben', 'rebo', 'rebot', 'umalis', 'tae', 'bruh', 'wag', 'hoy', 'nigga', 'sad', 'sadge', 'hin', 'gomen', 'hbd', 'happy birthday', 'bertdey', 'berdei', 'bts', 'kpop', 'i love you', 'mahal kita', 'aishiteru', 'ha'];
+const gameWordTriggers = ['tara', 'game', 'raro', 'ra', 'g', 'laro', 'tara', 'what', 'wut', 'nani', 'set'];
+const questionWordTriggers = ['?','kailan', 'kelan', 'bat', 'ano', 'bakit', 'ket', 'anu', 'saan', 'pano', 'panu', 'anong', 'anung', 'paano', 'paanong', 'panung', 'panong', 'saan'];
+const insultWordTriggers = ['gae', 'gay', 'pink', 'yellow', 'red', 'black', 'violet', 'purple', 'pilay', 'mama', 'pangit', 'panget', 'bot', 'weak', 'talo'];
 const curseWordTriggers = ['fuck', 'gagi', 'gago', 'shit', 'tanga', 'putang ina', 'pota'];
 const greetingsWordTriggers = ['oi', 'hey', 'uy', 'hi', 'hello', 'balita', 'musta', 'ey'] ;
 const apologizingWordTriggers = ['sori', 'sorna', 'sorry', 'sensya'];
-const partingWordTriggers = ['bye', 'alis na ko', 'gtg', 'bounce na ko', 'kain na', 'may gagawin'];
-const specialWordTriggers = ['hoy', 'nigga', 'sad', 'sadge', 'hin', 'gomen', 'hbd', 'happy birthday', 'bertdey', 'berdei', 'bts', 'kpop', 'i love you', 'mahal kita', 'aishiteru', 'ha'];
+const partingWordTriggers = ['bye'];
 const allWordTriggers = [...gameWordTriggers, ...questionWordTriggers, ...insultWordTriggers, ...curseWordTriggers, ...greetingsWordTriggers, ...specialWordTriggers];
 
-client.login('MTEzMDI4MzIxOTQzOTMzMzQ2Nw.GB-Qzq.ElQSEQEyYPqwELRshoMMsa9D_fvBQs_d0m2ICI');
+client.login(process.env.token);
 
 
 client.on('ready', () => {
   console.log(`${client.user.tag} is online`);
 });
 
+
+async function aiChat(message) {
+  try {
+    const completion = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: message.content,
+        max_tokens: 3000
+    })
+    message.reply(completion.data.choices[0].text)
+  }catch (e) {
+      console.log(e)
+  }
+}
 
 function switchCaseCommand(message) {
   command = message.content.replace(botPrefix, '')
@@ -31,11 +47,12 @@ function switchCaseCommand(message) {
       break;
   
     default:
+      aiChat(message);
       break;
   }
-
-  
 }
+
+
 client.on('messageCreate', (message) => {
   if (message.content.startsWith(botPrefix)) {
     switchCaseCommand(message);
@@ -47,6 +64,10 @@ client.on('messageCreate', (message) => {
       const word = allWordTriggers[index];
       const regex = new RegExp(`\\b${word}\\b`, 'i');
       if (regex.test(message.content)) {
+        if (specialWordTriggers.includes(word)) {
+          replyToSpecialWordTriggers(message, word)
+          return;
+        }
         if (gameWordTriggers.includes(word)) {
           replyToGameWordTriggers(message, word)
           return;
@@ -75,16 +96,10 @@ client.on('messageCreate', (message) => {
           replyToPartingWordTriggers(message, word)
           return;
         }
-        if (specialWordTriggers.includes(word)) {
-          replyToSpecialWordTriggers(message, word)
-          return;
-        }
       }
     }
   }
 });
-
-
 
 
 
@@ -98,7 +113,7 @@ function replyToGameWordTriggers(message, word) {
 }
 
 function replyToQuestionWordTriggers(message, word) {
-  const replyTexts = [ `Ewan`, `${word}?`, `Gamit ka calcu`, `Alam ko pero di ko sasabihin`, `Sagot ko 42` ]
+  const replyTexts = [ `Ewan`, `${word}?`, `Gamit ka calcu`, `Alam ko pero di ko sasabihin`, `Sagot ko ${Math.floor(Math.random() * 100)}` ]
 
   message.reply(replyTexts[Math.floor(Math.random() * replyTexts.length)]);
 }
@@ -141,20 +156,35 @@ function replyToSpecialWordTriggers(message, word) {
     case 'happy birthday':
     case 'happy birthday':
     case 'bertdey':
-      replyTexts = [ `Uy birthday!`, `We? Birthday mo ngayooon?`, `Hapi berdey!`, `Magsosoli na ako ng walis tingting` ]
+      replyTexts = [ `Uy birthday!`, `We? Birthday mo ngayooon?`, `Hapi berdey!`, `Magsosoli na ako ng walis tingting`, `Happy birthday so much!` ]
       break;
 
     case 'bts':
     case 'kpop':
+    case 'tae':
       replyTexts = [ `Yok`, `Eww!`, `Disgust`, `Wews` ]
       break;
-
+    case 'bruh':
+      replyTexts = [ `Bruh!`]
+      break;
+    case 'wag':
+      replyTexts = [ `Sige`, `OK di na`, `de, wala` ]
+      break;
     case 'aishiteru':
       replyTexts = [ `Kyah~!`, `Doki~!`, `Kyun~!`, `Kanojo ga aru no de, gomen!` ]
       break;
 
     case 'hoy':
       replyTexts = [ `Pinoy ako~!` ]
+      break;
+
+    case 'marben':
+    case 'rebo':
+    case 'rebot':
+      replyTexts = [ `Wala pa kong ginagawa`, `Inosente ako`, `Uy! Natawag ako` ]
+      break;
+    case 'sino ka':
+      replyTexts = [ `Ako ikaw mula sa future` ]
       break;
 
     case 'nigga':
@@ -167,8 +197,13 @@ function replyToSpecialWordTriggers(message, word) {
       break;
       
     case 'ha':
-        replyTexts = [ `Hatdog!`, `Halaman!`, `Hangin!`, `Halimaw` ]
+        replyTexts = [ `Hatdog!`, `Halaman!`, `Hangin!`, `Halimaw`, `Habagat` ]
         break;
+
+    case 'haha':
+    case 'hahaha':
+      replyTexts = [ `Tawa ka d'yan a`, `Funny ane?`, `Luh di naman nakakatawa e`, `HAHAHA!`, `Ha Ha Ha` ]
+      break;
 
     case 'gomen':
         replyTexts = [ `Yurusanai!`, `Yurusan!`, `Yurusan zo!` ]
@@ -177,8 +212,15 @@ function replyToSpecialWordTriggers(message, word) {
     case 'sad':
     case 'hin':
     case 'sadge':
+        replyTexts = [ `Sad XD`, `Hin :(((`, `Pien~! :(` ]
+        break;
 
-        replyTexts = [ `Sad XD`, `Hin :(((`, `Pien~ :(` ]
+    case 'umalis':
+        replyTexts = [ `Pabalikin mo bilis` ]
+        break;
+
+    case 'dn':
+        replyTexts = [ `DN ka na naman~`, `Dragon Nest pa more`, `DN pa more!` ]
         break;
 
     default:
