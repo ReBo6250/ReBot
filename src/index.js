@@ -2,7 +2,7 @@
 require('dotenv').config();
 const { Client, Intents } = require('discord.js');
 const client = new Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES] });
-const botPrefix = '-rebot ';
+const { prompt, botPrefix, botName } = require('./data/constants.js')
 client.login(process.env.token);
 
 client.on('ready', () => {
@@ -31,7 +31,6 @@ const db = admin.database();
 const { Configuration, OpenAIApi } = require("openai")
 const configuration = new Configuration({ organization: process.env.org, apiKey: process.env.apiKey })
 const openai = new OpenAIApi(configuration)
-const { setPrompt } = require('./data/scenario.js')
 
 async function aiServerChat(message) {
   const messageContent = message.content.toLowerCase().replace(botPrefix, ''); // Trim bot prefix
@@ -50,16 +49,19 @@ async function aiServerChat(message) {
     conversationData.push({ role: 'user', userId: message.author.id, displayName: displayName, content: messageContent, timeSent: currentTime });
 
     // Create a list of previous user messages as context for AI response
-    const context = conversationData.map(item => `\t${item.timeSent}\n${item.role} ${item.userId}(${item.displayName}): ${item.content}`).join('\n');
+    let context = conversationData.map(item => `${item.timeSent ? '\n' : ''}${item.timeSent ? `${item.timeSent}\n` : ''}${item.role == 'assistant' ? botName : item.role}${item.userId ? ` ${item.userId}` : ''}${item.displayName ? `(${item.displayName})` : ''}: ${item.content}\n`).join('');
     // Make an API call to OpenAI to get the chat completion response
     const completion = await openai.createChatCompletion({
       model: 'gpt-3.5-turbo-16k',
-      messages: [{ role: "user", content: setPrompt(context) }],
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: context }
+      ],
       temperature: 0,
-      top_p: 1,
-      frequency_penalty: 1.0,
+      top_p: 0.5,
+      frequency_penalty: 1.5,
       presence_penalty: 1.0,
-      max_tokens: 3000,
+      max_tokens: 4096,
     });
     // Extract the response text from the completion
     const botResponse = completion.data.choices[0].message;
@@ -81,7 +83,7 @@ async function aiServerChat(message) {
     } else {
       // Handle other errors
       console.error('Error in AI chat:', error);
-      return 'An error occurred while processing your message.';
+      message.reply('An error occurred while processing your message.');
     }
   }
 }
